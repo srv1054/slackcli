@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/parnurzeal/gorequest"
 )
@@ -25,6 +24,16 @@ const (
 	channelUnArchiveURL string = "https://slack.com/api/channels.unarchive"
 )
 
+// Slackopts - slackCLI Options
+type Slackopts struct {
+	Version    string
+	Config     string
+	SlackHook  string
+	SlackToken string
+	Snippet    bool
+	BotDM      bool
+}
+
 // Field - struct
 type Field struct {
 	Title string `json:"title"`
@@ -36,86 +45,6 @@ type Field struct {
 type BasicSlackPayload struct {
 	Ok    bool   `json:"ok"`
 	Error string `json:"error"`
-}
-
-// ChannelListPayload - return payload containing list of slack channels
-type ChannelListPayload struct {
-	Ok       bool `json:"ok"`
-	Channels []struct {
-		ID                 string        `json:"id"`
-		Name               string        `json:"name"`
-		IsChannel          bool          `json:"is_channel"`
-		IsGroup            bool          `json:"is_group"`
-		IsIm               bool          `json:"is_im"`
-		Created            int           `json:"created"`
-		Creator            string        `json:"creator"`
-		IsArchived         bool          `json:"is_archived"`
-		IsGeneral          bool          `json:"is_general"`
-		Unlinked           int           `json:"unlinked"`
-		NameNormalized     string        `json:"name_normalized"`
-		IsShared           bool          `json:"is_shared"`
-		IsExtShared        bool          `json:"is_ext_shared"`
-		IsOrgShared        bool          `json:"is_org_shared"`
-		PendingShared      []interface{} `json:"pending_shared"`
-		IsPendingExtShared bool          `json:"is_pending_ext_shared"`
-		IsMember           bool          `json:"is_member"`
-		IsPrivate          bool          `json:"is_private"`
-		IsMpim             bool          `json:"is_mpim"`
-		Topic              struct {
-			Value   string `json:"value"`
-			Creator string `json:"creator"`
-			LastSet int    `json:"last_set"`
-		} `json:"topic"`
-		Purpose struct {
-			Value   string `json:"value"`
-			Creator string `json:"creator"`
-			LastSet int    `json:"last_set"`
-		} `json:"purpose"`
-		PreviousNames []interface{} `json:"previous_names"`
-		NumMembers    int           `json:"num_members"`
-	} `json:"channels"`
-	ResponseMetadata struct {
-		NextCursor string `json:"next_cursor"`
-	} `json:"response_metadata"`
-	Error string `json:"error"`
-}
-
-// ChannelRespPayload - return payload from slack channel creation
-type ChannelRespPayload struct {
-	Ok      bool `json:"ok"`
-	Channel struct {
-		ID                 string      `json:"id"`
-		Name               string      `json:"name"`
-		IsChannel          bool        `json:"is_channel"`
-		Created            int         `json:"created"`
-		Creator            string      `json:"creator"`
-		IsArchived         bool        `json:"is_archived"`
-		IsGeneral          bool        `json:"is_general"`
-		NameNormalized     string      `json:"name_normalized"`
-		IsShared           bool        `json:"is_shared"`
-		IsOrgShared        bool        `json:"is_org_shared"`
-		IsMember           bool        `json:"is_member"`
-		IsPrivate          bool        `json:"is_private"`
-		IsMpim             bool        `json:"is_mpim"`
-		LastRead           string      `json:"last_read"`
-		Latest             interface{} `json:"latest"`
-		UnreadCount        int         `json:"unread_count"`
-		UnreadCountDisplay int         `json:"unread_count_display"`
-		Members            []string    `json:"members"`
-		Topic              struct {
-			Value   string `json:"value"`
-			Creator string `json:"creator"`
-			LastSet int    `json:"last_set"`
-		} `json:"topic"`
-		Purpose struct {
-			Value   string `json:"value"`
-			Creator string `json:"creator"`
-			LastSet int    `json:"last_set"`
-		} `json:"purpose"`
-		PreviousNames []interface{} `json:"previous_names"`
-	} `json:"channel"`
-	Error  string `json:"error"`
-	Detail string `json:"detail"`
 }
 
 // BotDMPayload - struct for bot DMs
@@ -181,11 +110,11 @@ func redirectPolicyFunc(req gorequest.Request, via []gorequest.Request) error {
 }
 
 // PostSnippet - Post a snippet of any type to slack channel
-func PostSnippet(tiktok *TikTokConf, fileType string, fileContent string, channel string, title string) error {
+func PostSnippet(opts Slackopts, fileType string, fileContent string, channel string, title string) error {
 
 	form := url.Values{}
 
-	form.Set("token", tiktok.Config.SlackToken)
+	form.Set("token", opts.SlackHook)
 	form.Set("channels", channel)
 	form.Set("content", fileContent)
 	form.Set("filetype", fileType)
@@ -196,19 +125,17 @@ func PostSnippet(tiktok *TikTokConf, fileType string, fileContent string, channe
 	req, err := http.NewRequest("POST", fileUploadURL, strings.NewReader(s))
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+tiktok.Config.SlackToken)
+	req.Header.Add("Authorization", "Bearer "+opts.SlackToken)
 
 	c := &http.Client{}
 	resp, err := c.Do(req)
 	if err != nil {
-		errTrap(tiktok, "Slack PostSnippet - http.Do() error: ", err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	_, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		errTrap(tiktok, "Slack PostSnippet - ioutil.ReadAll() error: ", err)
 		return err
 	}
 
@@ -235,31 +162,28 @@ func Send(webhookURL string, proxy string, payload Payload) []error {
 }
 
 // WranglerDM - Send chat.Post API DM messages "as the bot"
-func WranglerDM(tiktok *TikTokConf, payload BotDMPayload) error {
+func WranglerDM(opts Slackopts, payload BotDMPayload) error {
 	url := "https://slack.com/api/chat.postMessage"
 
-	payload.Token = tiktok.Config.SlackToken
+	payload.Token = opts.SlackToken
 	payload.AsUser = true
 
 	jsonStr, err := json.Marshal(&payload)
 	if err != nil {
-		errTrap(tiktok, "Error attempting to marshal struct to json for slack BotDMPayload", err)
 		return err
 	}
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
 	if err != nil {
-		errTrap(tiktok, "Error in http.NewRequest in `CreateList` in `trello.go`", err)
 		return err
 	}
 
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Bearer "+tiktok.Config.SlackToken)
+	req.Header.Add("Authorization", "Bearer "+opts.SlackToken)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		errTrap(tiktok, "Error in client.Do in `CreateList` in `trello.go`", err)
 		return err
 	}
 	defer resp.Body.Close()
@@ -281,225 +205,4 @@ func Wrangler(webhookURL string, message string, myChannel string, emojiName str
 	if len(err) > 0 {
 		fmt.Printf("Slack Messaging Error in Wrangler function in slack.go: %s\n", err)
 	}
-}
-
-//LogToSlack - Dump Logs to a Slack Channel
-func LogToSlack(message string, tiktok *TikTokConf, attachments Attachment) {
-	now := time.Now().Local()
-	if tiktok.Config.LoggingPrefix != "" {
-		message = "`" + tiktok.Config.LoggingPrefix + "` - *" + now.Format("01/02/2006 15:04:05") + " :* " + message
-	} else {
-		message = "*" + now.Format("01/02/2006 15:04:05") + " :* " + message
-	}
-	Wrangler(tiktok.Config.SlackHook, message, tiktok.Config.LogChannel, tiktok.Config.SlackEmoji, attachments)
-}
-
-// CreateChannel - create a slack channel and return the payload
-func CreateChannel(tiktok *TikTokConf, channelName string, errValidate bool) (slackPayload ChannelRespPayload, success bool, err error) {
-	var validate string
-
-	form := url.Values{}
-
-	if errValidate {
-		validate = "true"
-	} else {
-		validate = "false"
-	}
-	form.Set("token", tiktok.Config.SlackOAuth)
-	form.Set("name", channelName)
-	form.Set("validate", validate)
-
-	s := form.Encode()
-
-	req, err := http.NewRequest("POST", channelCreateURL, strings.NewReader(s))
-
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+tiktok.Config.SlackToken)
-
-	c := &http.Client{}
-	resp, err := c.Do(req)
-	if err != nil {
-		errTrap(tiktok, "Slack CreateChannel - http.Do() error: ", err)
-		return slackPayload, false, err
-	}
-	defer resp.Body.Close()
-
-	err = json.NewDecoder(resp.Body).Decode(&slackPayload)
-
-	if slackPayload.Ok {
-		return slackPayload, true, nil
-	}
-
-	return slackPayload, false, nil
-}
-
-// ArchiveChannel - archive a slack channel created by bot and return payload. must send channel slackID, not channel name
-func ArchiveChannel(tiktok *TikTokConf, channelID string) (slackPayload ChannelRespPayload, success bool, err error) {
-
-	form := url.Values{}
-
-	form.Set("token", tiktok.Config.SlackOAuth)
-	form.Set("channel", channelID)
-
-	s := form.Encode()
-
-	req, err := http.NewRequest("POST", channelArchiveURL, strings.NewReader(s))
-
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+tiktok.Config.SlackToken)
-
-	c := &http.Client{}
-	resp, err := c.Do(req)
-	if err != nil {
-		errTrap(tiktok, "Slack ArchiveChannel - http.Do() error: ", err)
-		return slackPayload, false, err
-	}
-	defer resp.Body.Close()
-
-	err = json.NewDecoder(resp.Body).Decode(&slackPayload)
-
-	if slackPayload.Ok {
-		return slackPayload, true, nil
-	}
-
-	return slackPayload, false, nil
-}
-
-// UnArchiveChannel - un-archive a slack channel and return payload. must send channel slackID, not channel name
-func UnArchiveChannel(tiktok *TikTokConf, channelID string) (slackPayload BasicSlackPayload, err error) {
-
-	form := url.Values{}
-
-	form.Set("token", tiktok.Config.SlackOAuth)
-	form.Set("channel", channelID)
-
-	s := form.Encode()
-
-	req, err := http.NewRequest("POST", channelUnArchiveURL, strings.NewReader(s))
-
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+tiktok.Config.SlackToken)
-
-	c := &http.Client{}
-	resp, err := c.Do(req)
-	if err != nil {
-		errTrap(tiktok, "Slack UnArchiveChannel - http.Do() error: ", err)
-		return slackPayload, err
-	}
-	defer resp.Body.Close()
-
-	err = json.NewDecoder(resp.Body).Decode(&slackPayload)
-
-	if slackPayload.Ok {
-		return slackPayload, nil
-	}
-
-	return slackPayload, nil
-}
-
-// ChannelList - Return slice of slack channels
-func ChannelList(tiktok *TikTokConf, noArchived bool) (slackPayload ChannelListPayload, success bool, err error) {
-	var ignoreArchive string
-
-	form := url.Values{}
-
-	if noArchived {
-		ignoreArchive = "true"
-	} else {
-		ignoreArchive = "false"
-	}
-
-	form.Set("token", tiktok.Config.SlackToken)
-	form.Set("exclude_archived", ignoreArchive)
-	form.Set("limit", "1000")
-	form.Set("types", "public_channel")
-
-	s := form.Encode()
-
-	req, err := http.NewRequest("POST", channelListURL, strings.NewReader(s))
-
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+tiktok.Config.SlackToken)
-
-	c := &http.Client{}
-	resp, err := c.Do(req)
-	if err != nil {
-		errTrap(tiktok, "Slack ChannelList - http.Do() error: ", err)
-		return slackPayload, false, err
-	}
-	defer resp.Body.Close()
-
-	err = json.NewDecoder(resp.Body).Decode(&slackPayload)
-
-	if slackPayload.Ok {
-		return slackPayload, true, nil
-	}
-
-	return slackPayload, false, nil
-}
-
-// ChannelInvite - Invite a user to a specific channel. Expects slack channel ID and user ID not slack names
-func ChannelInvite(tiktok *TikTokConf, channelID string, userID string) (slackPayload BasicSlackPayload, err error) {
-
-	form := url.Values{}
-
-	form.Set("token", tiktok.Config.SlackOAuth)
-	form.Set("channel", channelID)
-	form.Set("user", userID)
-
-	s := form.Encode()
-
-	req, err := http.NewRequest("POST", channelInviteURL, strings.NewReader(s))
-
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+tiktok.Config.SlackToken)
-
-	c := &http.Client{}
-	resp, err := c.Do(req)
-	if err != nil {
-		errTrap(tiktok, "Slack ChannelInvite - http.Do() error: ", err)
-		return slackPayload, err
-	}
-	defer resp.Body.Close()
-
-	err = json.NewDecoder(resp.Body).Decode(&slackPayload)
-
-	if slackPayload.Ok {
-		return slackPayload, nil
-	}
-
-	return slackPayload, nil
-}
-
-// ChannelTopicSet - Set topic in a channel. Expects slack channel ID not name. Bot MUST be in channel to work
-func ChannelTopicSet(tiktok *TikTokConf, channelID string, topic string) (slackPayload BasicSlackPayload, err error) {
-
-	form := url.Values{}
-
-	form.Set("token", tiktok.Config.SlackToken)
-	form.Set("channel", channelID)
-	form.Set("topic", topic)
-
-	s := form.Encode()
-
-	req, err := http.NewRequest("POST", channelTopicSetURL, strings.NewReader(s))
-
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+tiktok.Config.SlackToken)
-
-	c := &http.Client{}
-	resp, err := c.Do(req)
-	if err != nil {
-		errTrap(tiktok, "Slack ChannelTopicSet - http.Do() error: ", err)
-		return slackPayload, err
-	}
-	defer resp.Body.Close()
-
-	err = json.NewDecoder(resp.Body).Decode(&slackPayload)
-
-	if slackPayload.Ok {
-		return slackPayload, nil
-	}
-
-	return slackPayload, nil
 }
