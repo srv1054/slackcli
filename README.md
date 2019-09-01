@@ -3,11 +3,12 @@ CLI for dumping slack webhooks
 
 ## Webhook
 Webhook URL is required to use `slackcli`.  You can generate one for your slack server really easily.
-Optional for certain functions such as posting *snippets* or *bot DM messages* you will need a slack API token.
+
+Optionally for certain functions such as posting *snippets* or *bot DM messages* you will need a slack API token.
 
 You can feed your webhook into `slackcli` in one of three ways:
 * via CLI parameter `-hook` for webhook URL and `-token` for API Token
-* via ENV variable `slackhook` or `slacktoken`
+* via ENV variable `slackhook` for webhook URL and `slacktoken` for API Token
 * via optional `slackcli` config file specified by `-cfg` parameter
 
 If all or any combination exist `slackcli` will take the first one in this order:
