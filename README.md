@@ -21,8 +21,8 @@ Since you can specify the config file on the CLI you can have as many as you wan
 The configuration file can be specified using the `-cfg` parameter.  Specify a path and the filename.
 
 **Example**:  
-* `slackcli -cfg /etc/filmBot.json -m "Hi I'm a bot using my config file for parameters"`
-* `slackcli -cfg /etc/weatherBot.json -m "Hi I'm a bot using my config file for parameters"` 
+* `slackcli -cfg /etc/filmBot.json -m "Hi I'm film bot talking about films using my config file for parameters"`
+* `slackcli -cfg /etc/weatherBot.json -m "Hi I'm a weather bot, sunny as usual, using my config file for parameters"` 
 
 
 If you do not specify the `-cfg` parameter, `slackcli` does (every time) check a default path to see if one exists.   By using this default path you can simply the command line for a single use installation.  Or at a minimum to have defaults if you forget a paramemter.
