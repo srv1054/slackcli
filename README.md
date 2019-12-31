@@ -48,3 +48,8 @@ CLI parameters individually will over-ride any parameter in the configuration fi
 Webhook URL is required to use `slackcli`.  You can generate one for your slack server really easily -> https://slack.com/help/articles/115005265063-Incoming-WebHooks-for-Slack
 
 An example of the config file and its options are available in the source repository: https://github.com/srv1054/slackcli/blob/master/config.example.json
+
+# TODO
+- [ ] Configure to accept piped data and send to Slack Snippet
+- [ ] Configure to send DM's as a real bot using Token, instead of showing up via default webhook "Slackbot" DM
+
