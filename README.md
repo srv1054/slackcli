@@ -7,6 +7,7 @@ CLI for dumping slack messages
 * `slackcli -h` - get CLI parameter help
 
 ### All the things on the CLI
+---
 You can specify everything on the CLI if you want.  SlackwebHook, Emoji, Name, Channel, etc...
 By doing this `slackcli` will run with no config files necessary
 
@@ -14,6 +15,7 @@ By doing this `slackcli` will run with no config files necessary
 * `slackcli -hook "https://hooks.slack.com/services/MY-HOOK-TGSABSP4/BS59MA3H/Ooc2gaGwtFcclZ0HXuv" -e "man" -n "RadBot" -c "#general" -m "Hi I'm radbot bot"`
 
 ### Configuration File
+---
 If you have a configuration file the `slackcli` app will default to its settings when they aren't over-ridden by the command line parameters.  This is nice for quick calls or if you are using `slackcli` as the same "bot" all the time.
 
 **Example**:  
