@@ -24,14 +24,13 @@ func main() {
 	var fail string
 	var attachments slackmod.Attachment
 	var opts slackmod.Slackopts
-	opts.Version = "1.03"
+
+	opts.Version = "1.05"
 
 	version := flag.Bool("v", false, "Show current version number")
 	cfg := flag.String("cfg", "", "Path to optional configuration file")
 	hooker := flag.String("hook", "", "Slackhook URL, if no config file")
 	token := flag.String("token", "", "Slack Bearer Token, if no config file")
-	//snipme := flag.Bool("snip", false, "Post a snippet")
-	//botme := flag.Bool("botdm", false, "Send DM message as a bot")
 	postchannel := flag.String("c", "", "Channel to send message to (specific # or @)")
 	postname := flag.String("n", "", "Name of bot to post to channel as")
 	postemoji := flag.String("e", "", "Emoji to use for bot post (no colons)")
@@ -40,15 +39,13 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("slackcli v" + opts.Version)
+		fmt.Println("slackcli v" + opts.Version + " @srv1054")
 		os.Exit(0)
 	}
 
 	if *cfg != "" {
 		myConfig = *cfg
 	} else {
-		// check for and load via default path and name
-		// /etc/slackcli.json or c:/programdata/slackcli.json
 		myConfig = "default"
 	}
 
@@ -88,7 +85,6 @@ func main() {
 		myName = *postname
 	}
 
-	// send the message
 	slackmod.Wrangler(opts.SlackHook, myMessage, myChannel, myEmoji, myName, attachments)
 
 	// start features for BOT DMs and Snippets here
