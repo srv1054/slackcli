@@ -43,6 +43,6 @@ CLI parameters individually will over-ride any parameter in the configuration fi
 * `slackcli -m "Hi this bot uses cfg for everything except emoji" -e "bender_dance"`
 
 ## Webhook
-Webhook URL is required to use `slackcli`.  You can generate one for your slack server [https://slack.com/help/articles/115005265063-Incoming-WebHooks-for-Slack|really easily].
+Webhook URL is required to use `slackcli`.  You can generate one for your slack server really easily -> https://slack.com/help/articles/115005265063-Incoming-WebHooks-for-Slack
 
-An example of the config file and its options are available in the source repository: https://github.com/srv1054/slackcli/config.example.json
+An example of the config file and its options are available in the source repository: https://github.com/srv1054/slackcli/blob/master/config.example.json
