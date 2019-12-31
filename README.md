@@ -1,7 +1,7 @@
 # slackcli
 CLI for dumping slack messages
 
-## How to use
+# How to use
 
 * `slackcli -v` - get version
 * `slackcli -h` - get CLI parameter help
