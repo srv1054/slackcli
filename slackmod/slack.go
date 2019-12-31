@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"runtime"
 	"strings"
 
 	"github.com/parnurzeal/gorequest"
@@ -26,12 +28,15 @@ const (
 
 // Slackopts - slackCLI Options
 type Slackopts struct {
-	Version    string
-	Config     string
-	SlackHook  string
-	SlackToken string
-	Snippet    bool
-	BotDM      bool
+	Version             string
+	Config              string
+	SlackHook           string
+	SlackToken          string
+	SlackDefaultName    string
+	SlackDefaultChannel string
+	SlackDefaultEmoji   string
+	Snippet             bool
+	BotDM               bool
 }
 
 // Field - struct
@@ -192,11 +197,11 @@ func WranglerDM(opts Slackopts, payload BotDMPayload) error {
 }
 
 // Wrangler - wrangle slack calls
-func Wrangler(webhookURL string, message string, myChannel string, emojiName string, attachments Attachment) {
+func Wrangler(webhookURL string, message string, myChannel string, emojiName string, botName string, attachments Attachment) {
 
 	payload := Payload{
 		Text:        message,
-		Username:    "TikTokConf",
+		Username:    botName,
 		Channel:     myChannel,
 		IconEmoji:   emojiName,
 		Attachments: []Attachment{attachments},
@@ -205,4 +210,49 @@ func Wrangler(webhookURL string, message string, myChannel string, emojiName str
 	if len(err) > 0 {
 		fmt.Printf("Slack Messaging Error in Wrangler function in slack.go: %s\n", err)
 	}
+}
+
+// LoadConfig - Load Main Configuration JSON
+func LoadConfig(path string) (opts Slackopts, fail string) {
+	var fileName string
+
+	if path == "default" {
+		if runtime.GOOS == "windows" {
+			fileName = "c:/programdata/slackcli.json"
+		} else {
+			fileName = "/etc/slackcli.json"
+		}
+	} else {
+		fileName = path
+	}
+
+	file, err := os.Open(fileName)
+	if err != nil {
+		fmt.Println("Error opening specified config file: " + err.Error() + ".  Could not find path for " + fileName)
+		if path == "default" {
+			return opts, "nodefault"
+		}
+
+		return opts, "err"
+	}
+
+	decoded := json.NewDecoder(file)
+	err = decoded.Decode(&opts)
+	if err != nil {
+		fmt.Println("Error reading invalid JSON file: " + fileName + "(" + err.Error() + ")")
+		return opts, "err"
+	}
+
+	if opts.SlackDefaultEmoji == "" {
+		opts.SlackDefaultEmoji = "robot_face"
+	}
+	if opts.SlackDefaultName == "" {
+		opts.SlackDefaultName = "Slack Robot"
+	}
+
+	if opts.SlackDefaultChannel == "" {
+		opts.SlackDefaultChannel = "#general"
+	}
+
+	return opts, "loaded"
 }

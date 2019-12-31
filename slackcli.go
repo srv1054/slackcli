@@ -16,62 +16,81 @@ import (
 
 func main() {
 
-	var shook string
-	var stoken string
+	var myChannel string
+	var myMessage string
+	var myEmoji string
+	var myName string
+	var myConfig string
+	var fail string
+	var attachments slackmod.Attachment
 	var opts slackmod.Slackopts
-	opts.Version = "0.2"
+	opts.Version = "1.03"
 
 	version := flag.Bool("v", false, "Show current version number")
 	cfg := flag.String("cfg", "", "Path to optional configuration file")
-	hooker := flag.String("hook", "", "Slackhook URL")
-	token := flag.String("token", "", "Slack Bearer Token")
-	snipme := flag.Bool("snip", false, "Post a snippet")
-	botme := flag.Bool("botdm", false, "Send DM message as a bot")
+	hooker := flag.String("hook", "", "Slackhook URL, if no config file")
+	token := flag.String("token", "", "Slack Bearer Token, if no config file")
+	//snipme := flag.Bool("snip", false, "Post a snippet")
+	//botme := flag.Bool("botdm", false, "Send DM message as a bot")
+	postchannel := flag.String("c", "", "Channel to send message to (specific # or @)")
+	postname := flag.String("n", "", "Name of bot to post to channel as")
+	postemoji := flag.String("e", "", "Emoji to use for bot post (no colons)")
+	postmessage := flag.String("m", "", "Message to send to slack channel")
 
 	flag.Parse()
 
-	opts.Config = *cfg
-	opts.Snippet = *snipme
-	opts.BotDM = *botme
-	shook = *hooker
-	stoken = *token
-
 	if *version {
 		fmt.Println("slackcli v" + opts.Version)
+		os.Exit(0)
 	}
 
-	// if cfg is true load it
-	if opts.Config != "" {
-		fmt.Println("I gotta a config file at " + opts.Config)
+	if *cfg != "" {
+		myConfig = *cfg
 	} else {
-		if shook != "" {
-			opts.SlackHook = shook
-			fmt.Println("I found a hook via params")
-		} else {
-			key := os.Getenv("slackhook")
-			if key != "" {
-				opts.SlackHook = key
-				fmt.Println("I found a hook via ENV")
-			} else {
-				fmt.Println("ERR: I found no useable Slack webhook URL")
-				os.Exit(0)
-			}
-		}
-		// Token is only required if -snip  or -botdm parameter was used
-		if opts.Snippet || opts.BotDM {
-			if stoken != "" {
-				opts.SlackToken = stoken
-				fmt.Println("I found a token via params")
-			} else {
-				key := os.Getenv("slacktoken")
-				if key != "" {
-					opts.SlackToken = key
-					fmt.Println("I found a token via ENV")
-				} else {
-					fmt.Println("ERR: I found no useable Slack Token")
-					os.Exit(0)
-				}
-			}
-		}
+		// check for and load via default path and name
+		// /etc/slackcli.json or c:/programdata/slackcli.json
+		myConfig = "default"
 	}
+
+	opts, fail = slackmod.LoadConfig(myConfig)
+	if fail == "err" {
+		os.Exit(1)
+	}
+
+	if fail == "nodefault" {
+		if *hooker == "" || *postchannel == "" || *postemoji == "" || *postname == "" {
+			fmt.Println("Missing all the parameters, without a config file you need -c -n -e -m and -hook minimum")
+			os.Exit(1)
+		}
+		opts.SlackHook = *hooker
+		opts.SlackHook = *token
+	}
+
+	if *postmessage == "" {
+		fmt.Println("No message specified, nothing to send")
+		os.Exit(0)
+	} else {
+		myMessage = *postmessage
+	}
+	if *postchannel == "" {
+		myChannel = opts.SlackDefaultChannel
+	} else {
+		myChannel = *postchannel
+	}
+	if *postemoji == "" {
+		myEmoji = opts.SlackDefaultEmoji
+	} else {
+		myEmoji = *postemoji
+	}
+	if *postname == "" {
+		myName = opts.SlackDefaultName
+	} else {
+		myName = *postname
+	}
+
+	// send the message
+	slackmod.Wrangler(opts.SlackHook, myMessage, myChannel, myEmoji, myName, attachments)
+
+	// start features for BOT DMs and Snippets here
+
 }
