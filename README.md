@@ -18,6 +18,8 @@ By doing this `slackcli` will run with no config files necessary
 ---
 If you have a configuration file the `slackcli` app will default to its settings when they aren't over-ridden by the command line parameters.  This is nice for quick calls or if you are using `slackcli` as the same "bot" all the time.
 
+Be sure to secure your slackcli.json permissions as it contains your Slack Webhook, don't want the evil people stealing that.
+
 **Example**:  
 * `slackcli -cfg /etc/myparams.json -m "Hi I'm a bot using my config file for parameters"`
 
