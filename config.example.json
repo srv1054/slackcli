@@ -1,0 +1,7 @@
+{
+    "SlackHook": "https://hooks.slack.com/services/MY-HOOK-TGSABSP4/BS59MA3H/Ooc2gaGwtFcclZ0HXuv",
+    "SlackToken": "",
+    "SlackDefaultName": "Rad Bot",
+    "SlackDefaultChannel": "#general",
+    "SlackDefaultEmoji": "man"
+}
