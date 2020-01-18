@@ -25,13 +25,13 @@ func main() {
 	var attachments slackmod.Attachment
 	var opts slackmod.Slackopts
 
-	opts.Version = "1.05"
+	opts.Version = "1.04"
 
 	version := flag.Bool("v", false, "Show current version number")
-	cfg := flag.String("cfg", "", "Path to optional configuration file")
+	cfg := flag.String("cfg", "", "Path to optional configuration file (default /etc/slackcli.json)")
 	hooker := flag.String("hook", "", "Slackhook URL, if no config file")
 	token := flag.String("token", "", "Slack Bearer Token, if no config file")
-	postchannel := flag.String("c", "", "Channel to send message to (specific # or @)")
+	postchannel := flag.String("c", "", "Channel to send message to (specify # or @)")
 	postname := flag.String("n", "", "Name of bot to post to channel as")
 	postemoji := flag.String("e", "", "Emoji to use for bot post (no colons)")
 	postmessage := flag.String("m", "", "Message to send to slack channel")
@@ -40,6 +40,7 @@ func main() {
 
 	if *version {
 		fmt.Println("slackcli v" + opts.Version + " @srv1054")
+		fmt.Println("https://github.com/srv1054/slackcli")
 		os.Exit(0)
 	}
 
