@@ -28,7 +28,7 @@ func main() {
 	var attachments slackmod.Attachment
 	var opts slackmod.Slackopts
 
-	opts.Version = "1.06"
+	opts.Version = "1.06.02"
 
 	version := flag.Bool("v", false, "Show current version number")
 	cfg := flag.String("cfg", "", "Path to optional configuration file (default /etc/slackcli.json)")
@@ -108,6 +108,12 @@ func main() {
 				os.Exit(1)
 			}
 
+			err = slackmod.PostSnippet(opts, "text", string(buf), "server-messages", "filename")
+			if err != nil {
+				fmt.Println("Something failed in PostSnippet function -> " + err.Error())
+				os.Exit(1)
+			}
+
 			fmt.Println(string(buf))
 
 			if err != nil && err != io.EOF {
@@ -115,6 +121,7 @@ func main() {
 			}
 		}
 
+		os.Exit(0)
 	}
 
 	if *postmessage == "" {
