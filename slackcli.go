@@ -20,6 +20,7 @@ import (
 func main() {
 
 	var myChannel string
+	var myToken string
 	var myMessage string
 	var myEmoji string
 	var myName string
@@ -27,8 +28,11 @@ func main() {
 	var fail string
 	var attachments slackmod.Attachment
 	var opts slackmod.Slackopts
+	var buf []byte
+	var totalBuf string
+	var nBytes = int64(0)
 
-	opts.Version = "1.06.03"
+	opts.Version = "1.06.08"
 
 	version := flag.Bool("v", false, "Show current version number")
 	cfg := flag.String("cfg", "", "Path to optional configuration file (default /etc/slackcli.json)")
@@ -60,8 +64,8 @@ func main() {
 	}
 
 	if fail == "nodefault" {
-		if *hooker == "" || *postchannel == "" || *postemoji == "" || *postname == "" {
-			fmt.Println("Missing all the parameters, without a config file you need -c -n -e -m and -hook minimum")
+		if (*hooker == "" && *token == "") || *postchannel == "" || *postemoji == "" || *postname == "" {
+			fmt.Println("Missing all the parameters, without a config file you need -c -n -e (-m or -s) and (-hook or -token) minimum")
 			os.Exit(1)
 		}
 		opts.SlackHook = *hooker
@@ -87,11 +91,11 @@ func main() {
 
 	if *snippet {
 
-		nBytes := int64(0)
-
 		// read stdin
 		r := bufio.NewReader(os.Stdin)
-		buf := make([]byte, 0, 4*1024)
+		buf = make([]byte, 0, 4*1024)
+
+		fmt.Println("Reading Standard In STDIN")
 
 		for {
 
@@ -112,32 +116,35 @@ func main() {
 			}
 
 			nBytes += int64(len(buf))
-
-			// fail out with error if no stdin
-			if nBytes == 0 {
-				fmt.Println("Standard input was blank or 0 bytes, you must pipe valid text in")
-				os.Exit(1)
-			}
-
-			// validate token exists (on CLI or in cfg)
-			if *token == "" && opts.SlackToken == "" {
-				fmt.Println("You must provide a slack bot token in your cfg or on the CLI -token, to leverage snippts")
-				os.Exit(1)
-			}
-
-			err = slackmod.PostSnippet(opts, "Plain Text", string(buf), myChannel, "STD IN")
-			if err != nil {
-				fmt.Println("Something failed in PostSnippet function -> " + err.Error())
-				os.Exit(1)
-			}
-
-			fmt.Println("I sent -> " + string(buf))
+			totalBuf = totalBuf + string(buf)
 
 			if err != nil && err != io.EOF {
 				log.Fatal(err)
 			}
 		}
 
+		// fail out with error if no stdin
+		if nBytes == 0 {
+			fmt.Println("Standard input was blank or 0 bytes, you must pipe valid text in")
+			os.Exit(1)
+		}
+
+		// validate token exists (on CLI or in cfg)
+		if *token == "" && opts.SlackToken == "" {
+			fmt.Println("You must provide a slack bot token in your cfg or on the CLI -token, to leverage snippts")
+			os.Exit(1)
+		}
+		myToken = *token
+		if opts.SlackToken != "" {
+			myToken = opts.SlackToken
+		}
+
+		// post the snippet
+		err := slackmod.PostSnippet(myToken, "Plain Text", totalBuf, myChannel, "STD IN")
+		if err != nil {
+			fmt.Println("Something failed in PostSnippet function -> " + err.Error())
+			os.Exit(1)
+		}
 		os.Exit(0)
 	}
 

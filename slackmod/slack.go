@@ -115,11 +115,11 @@ func redirectPolicyFunc(req gorequest.Request, via []gorequest.Request) error {
 }
 
 // PostSnippet - Post a snippet of any type to slack channel
-func PostSnippet(opts Slackopts, fileType string, fileContent string, channel string, title string) error {
+func PostSnippet(token string, fileType string, fileContent string, channel string, title string) error {
 
 	form := url.Values{}
 
-	form.Set("token", opts.SlackHook)
+	//form.Set("token", token)
 	form.Set("channels", channel)
 	form.Set("content", fileContent)
 	form.Set("filetype", fileType)
@@ -128,21 +128,28 @@ func PostSnippet(opts Slackopts, fileType string, fileContent string, channel st
 	s := form.Encode()
 
 	req, err := http.NewRequest("POST", fileUploadURL, strings.NewReader(s))
+	if err != nil {
+		return err
+	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+opts.SlackToken)
+	req.Header.Add("Authorization", "Bearer "+token)
 
 	c := &http.Client{}
 	resp, err := c.Do(req)
 	if err != nil {
 		return err
 	}
+	fmt.Println(resp.Status)
+
 	defer resp.Body.Close()
 
 	_, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
+
+	//fmt.Println(string(body))
 
 	return nil
 }
@@ -228,7 +235,6 @@ func LoadConfig(path string) (opts Slackopts, fail string) {
 
 	file, err := os.Open(fileName)
 	if err != nil {
-		fmt.Println("Error opening specified config file: " + err.Error() + ".  Could not find path for " + fileName)
 		if path == "default" {
 			return opts, "nodefault"
 		}
