@@ -28,7 +28,7 @@ func main() {
 	var attachments slackmod.Attachment
 	var opts slackmod.Slackopts
 
-	opts.Version = "1.06.02"
+	opts.Version = "1.06.03"
 
 	version := flag.Bool("v", false, "Show current version number")
 	cfg := flag.String("cfg", "", "Path to optional configuration file (default /etc/slackcli.json)")
@@ -66,6 +66,23 @@ func main() {
 		}
 		opts.SlackHook = *hooker
 		opts.SlackHook = *token
+	}
+
+	// grab cfg file defaults if CLI is blank
+	if *postchannel == "" {
+		myChannel = opts.SlackDefaultChannel
+	} else {
+		myChannel = *postchannel
+	}
+	if *postemoji == "" {
+		myEmoji = opts.SlackDefaultEmoji
+	} else {
+		myEmoji = *postemoji
+	}
+	if *postname == "" {
+		myName = opts.SlackDefaultName
+	} else {
+		myName = *postname
 	}
 
 	if *snippet {
@@ -108,13 +125,13 @@ func main() {
 				os.Exit(1)
 			}
 
-			err = slackmod.PostSnippet(opts, "text", string(buf), "server-messages", "filename")
+			err = slackmod.PostSnippet(opts, "Plain Text", string(buf), myChannel, "STD IN")
 			if err != nil {
 				fmt.Println("Something failed in PostSnippet function -> " + err.Error())
 				os.Exit(1)
 			}
 
-			fmt.Println(string(buf))
+			fmt.Println("I sent -> " + string(buf))
 
 			if err != nil && err != io.EOF {
 				log.Fatal(err)
@@ -129,21 +146,6 @@ func main() {
 		os.Exit(0)
 	} else {
 		myMessage = *postmessage
-	}
-	if *postchannel == "" {
-		myChannel = opts.SlackDefaultChannel
-	} else {
-		myChannel = *postchannel
-	}
-	if *postemoji == "" {
-		myEmoji = opts.SlackDefaultEmoji
-	} else {
-		myEmoji = *postemoji
-	}
-	if *postname == "" {
-		myName = opts.SlackDefaultName
-	} else {
-		myName = *postname
 	}
 
 	slackmod.Wrangler(opts.SlackHook, myMessage, myChannel, myEmoji, myName, attachments)
