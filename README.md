@@ -52,10 +52,31 @@ An example of the config file and its options are available in the source reposi
 ## Snippets
 To send a snippet message into slack, you will need a BOT app token (not a web hook) either in your -cfg or on the CLI directly.
 
-The `-s` parameter will tell slackcli you want to create a snippet.  You can pipe any text information into slackcli to create the snippet.  You may also specify `-msg` which will place a markdown capable message prior to your snippet (in slack its referred to as the comment) and you may also specify `-title` which will give the snippet a title inside the post.  If omitted slack will labled it `untitled`
+The `-s` parameter will tell slackcli you want to create a snippet and are feeding it in via STDIN (pipe).  You can pipe any text information into slackcli to create the snippet.  You may also specify `-msg` which will place a markdown capable message prior to your snippet (in slack its referred to as the comment) and you may also specify `-title` which will give the snippet a title inside the post.  If omitted slack will labled it `untitled`
 
-**Example**:
+**NOTE**: 
+The `-s` parameter is need for *piping* files into slackcli as a snippet.  If you wish to just upload a file by referencing a filename, use the `-file` parameter instead.  
+
+**Example Piping**:
 * `cat myfile.txt | slackcli -s -title "My File" -msg "<!here> is my file!" -cfg /etc/mycfg.json`
+
+**Example Uploading**:
+* `slackcli -file "myfile.txt (or jpg etc)" -cfg /etc/mycfg.json`
+
+# Examples Galore!
+
+Upload a jpg to a slack channel
+* `slackcli -file "/my/path/picture.jpg" -cfg /etc/mycfg.json`
+* `slackcli -file "/my/path/picture.png" -c "#mychannel" -token "xoxb-asdasdf-asdfasdfasdf-asdfasdfasdf-2134234234"`
+
+Pipe data into a slack snippet
+* `cat /my/path/data.txt | slackcli -s -msg "this is the data we talked about" -title "data.txt" -cfg /etc/mycfg.json`
+* `cat /my/path/data.txt | slackcli -s -msg "this is the data we talked about" -title "data.txt" -token "xoxb-asdasdf-asdfasdfasdf-asdfasdfasdf-2134234234"`
+* `cat /my/path/data.txt | sort -r | unique -c | slackcli -s -msg "this is the data we talked about" -title "data.txt" -cfg /etc/mycfg.json`
+
+Send a basic markdown message to a channel
+* `slackcli -m "This is a robot *bleep* _blork_, bloop" -c "#mychannel" -e "robot" -n "Some Robot" -hook "https://slack.com/webhook/asdf90a870982038as098df0a98f70398f2"`
+* `slackcli -m "This is a robot *bleep* _blork_, bloop" -cfg /etc/mycfg.json`
 
 # TODO
 - [x] Configure to accept piped data and send to Slack Snippet

@@ -6,10 +6,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -157,21 +160,13 @@ func PostSnippet(token string, fileType string, fileContent string, channel stri
 // PostFile - Post a file of any type to slack channel
 func PostFile(token string, channel string, fileName string) error {
 
-	form := url.Values{}
-
-	form.Set("channels", channel)
-	//form.Set("filetype", fileType)
-	form.Set("file", fileName)
-	form.Set("filename", fileName)
-
-	s := form.Encode()
-
-	req, err := http.NewRequest("POST", fileUploadURL, strings.NewReader(s))
-	if err != nil {
-		return err
+	extraParams := map[string]string{
+		"channels": channel,
+		"filename": fileName,
+		"filetype": "binary",
 	}
 
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req, err := newfileUploadRequest(fileUploadURL, extraParams, "file", fileName)
 	req.Header.Add("Authorization", "Bearer "+token)
 
 	c := &http.Client{}
@@ -300,4 +295,34 @@ func LoadConfig(path string) (opts Slackopts, fail string) {
 	}
 
 	return opts, "loaded"
+}
+
+// Creates a new file upload http request with optional extra params
+func newfileUploadRequest(uri string, params map[string]string, paramName, path string) (*http.Request, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile(paramName, filepath.Base(path))
+	if err != nil {
+		return nil, err
+	}
+	_, err = io.Copy(part, file)
+
+	for key, val := range params {
+		_ = writer.WriteField(key, val)
+	}
+	err = writer.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", uri, body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	return req, err
 }

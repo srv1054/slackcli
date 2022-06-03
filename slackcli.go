@@ -20,8 +20,6 @@ import (
 
 // ************ FINISH FILE UPLOLAD MULTIPART DATA SECTION
 // FIGURE OUT HOW TO PASS emoji/name/channel to PostSNippet ( NOT SUPPORTED by Slack that I can see in API Docs )
-// Cleanup Parameters and Help
-// Update Readme.MD
 // Finish file posting multipart data stuff
 
 func main() {
@@ -39,7 +37,7 @@ func main() {
 	var totalBuf string
 	var nBytes = int64(0)
 
-	opts.Version = "1.07.04"
+	opts.Version = "1.08.00"
 
 	version := flag.Bool("v", false, "Show current version number")
 	cfg := flag.String("cfg", "", "Path to optional configuration file (default /etc/slackcli.json)")
@@ -166,12 +164,22 @@ func main() {
 
 	// if we get a -file to upload a file
 	if *fileis != "" {
+
+		// validate token exists (on CLI or in cfg)
+		if *token == "" && opts.SlackToken == "" {
+			fmt.Println("You must provide a slack bot token in your cfg or on the CLI -token, to leverage snippts")
+			os.Exit(1)
+		}
+		myToken = *token
+		if opts.SlackToken != "" {
+			myToken = opts.SlackToken
+		}
+
 		// UPLOAD whatever file was sent
 
 		// validate path and file exist
 		if _, err := os.Stat(*fileis); errors.Is(err, os.ErrNotExist) {
 			fmt.Println("Could not find specified file included in the -file parameter of " + *fileis)
-
 			os.Exit(1)
 		}
 		// verify file type
