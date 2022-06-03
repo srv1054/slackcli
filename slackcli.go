@@ -36,7 +36,7 @@ func main() {
 	var totalBuf string
 	var nBytes = int64(0)
 
-	opts.Version = "1.07.02"
+	opts.Version = "1.07.03"
 
 	version := flag.Bool("v", false, "Show current version number")
 	cfg := flag.String("cfg", "", "Path to optional configuration file (default /etc/slackcli.json)")
@@ -49,6 +49,7 @@ func main() {
 	snippet := flag.Bool("s", false, "Expect Pipe to Standard In to send to slack as a Snippet attachment.  Note slack does not support Emoji or bot name changes on API Snippet posts or file uploads.  -e and -n do not have any effect")
 	snipmsg := flag.String("msg", "", "Pre-Snippet Message, posted with any snippt. Requires -s")
 	fileis := flag.String("file", "", "Path and name of file to send as a snippet, can not be binary")
+	title := flag.String("title", "", "Title of Snippet file.  Requires -s")
 
 	flag.Parse()
 
@@ -151,7 +152,7 @@ func main() {
 		}
 
 		// post the snippet
-		err := slackmod.PostSnippet(myToken, "Plain Text", totalBuf, myChannel, "", *snipmsg)
+		err := slackmod.PostSnippet(myToken, "Plain Text", totalBuf, myChannel, *title, *snipmsg)
 		if err != nil {
 			fmt.Println("Something failed in PostSnippet function -> " + err.Error())
 			os.Exit(1)
