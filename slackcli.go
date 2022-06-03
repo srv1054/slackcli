@@ -20,6 +20,9 @@ import (
 
 // ************ FINISH FILE UPLOLAD MULTIPART DATA SECTION
 // FIGURE OUT HOW TO PASS emoji/name/channel to PostSNippet ( NOT SUPPORTED by Slack that I can see in API Docs )
+// Cleanup Parameters and Help
+// Update Readme.MD
+// Finish file posting multipart data stuff
 
 func main() {
 
@@ -101,13 +104,12 @@ func main() {
 		myName = *postname
 	}
 
+	// if we get a -s to make a snippet
 	if *snippet {
 
 		// read stdin
 		r := bufio.NewReader(os.Stdin)
 		buf = make([]byte, 0, 4*1024)
-
-		//fmt.Println("Reading Standard In STDIN")
 
 		for {
 
@@ -161,6 +163,8 @@ func main() {
 		os.Exit(0)
 
 	}
+
+	// if we get a -file to upload a file
 	if *fileis != "" {
 		// UPLOAD whatever file was sent
 
@@ -189,6 +193,7 @@ func main() {
 		myMessage = *postmessage
 	}
 
+	// assume we are just web hookering it
 	slackmod.Wrangler(opts.SlackHook, myMessage, myChannel, myEmoji, myName, attachments)
 
 }

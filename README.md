@@ -49,7 +49,16 @@ Webhook URL is required to use `slackcli`.  You can generate one for your slack 
 
 An example of the config file and its options are available in the source repository: https://github.com/srv1054/slackcli/blob/master/config.example.json
 
+## Snippets
+To send a snippet message into slack, you will need a BOT app token (not a web hook) either in your -cfg or on the CLI directly.
+
+The `-s` parameter will tell slackcli you want to create a snippet.  You can pipe any text information into slackcli to create the snippet.  You may also specify `-msg` which will place a markdown capable message prior to your snippet (in slack its referred to as the comment) and you may also specify `-title` which will give the snippet a title inside the post.  If omitted slack will labled it `untitled`
+
+**Example**:
+* `cat myfile.txt | slackcli -s -title "My File" -msg "<!here> is my file!" -cfg /etc/mycfg.json`
+
 # TODO
-- [ ] Configure to accept piped data and send to Slack Snippet
+- [x] Configure to accept piped data and send to Slack Snippet
+- [ ] Configure to allow file uploads
 - [ ] Configure to send DM's as a real bot using Token, instead of showing up via default webhook "Slackbot" DM
 
