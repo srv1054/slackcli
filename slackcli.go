@@ -36,7 +36,7 @@ func main() {
 	var totalBuf string
 	var nBytes = int64(0)
 
-	opts.Version = "1.07.03"
+	opts.Version = "1.07.04"
 
 	version := flag.Bool("v", false, "Show current version number")
 	cfg := flag.String("cfg", "", "Path to optional configuration file (default /etc/slackcli.json)")
@@ -107,7 +107,7 @@ func main() {
 		r := bufio.NewReader(os.Stdin)
 		buf = make([]byte, 0, 4*1024)
 
-		fmt.Println("Reading Standard In STDIN")
+		//fmt.Println("Reading Standard In STDIN")
 
 		for {
 
