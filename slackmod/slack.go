@@ -143,7 +143,6 @@ func PostSnippet(token string, fileType string, fileContent string, channel stri
 	if err != nil {
 		return err
 	}
-	//fmt.Println(resp.Status)
 
 	defer resp.Body.Close()
 
@@ -151,8 +150,6 @@ func PostSnippet(token string, fileType string, fileContent string, channel stri
 	if err != nil {
 		return err
 	}
-
-	//fmt.Println(string(body))
 
 	return nil
 }

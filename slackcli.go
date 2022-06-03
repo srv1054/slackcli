@@ -18,10 +18,6 @@ import (
    Compiles to single binary that can be used to dump info to slack quickly and easily via webhooks
 */
 
-// ************ FINISH FILE UPLOLAD MULTIPART DATA SECTION
-// FIGURE OUT HOW TO PASS emoji/name/channel to PostSNippet ( NOT SUPPORTED by Slack that I can see in API Docs )
-// Finish file posting multipart data stuff
-
 func main() {
 
 	var myChannel string

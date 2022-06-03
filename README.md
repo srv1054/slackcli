@@ -80,6 +80,6 @@ Send a basic markdown message to a channel
 
 # TODO
 - [x] Configure to accept piped data and send to Slack Snippet
-- [ ] Configure to allow file uploads
+- [x] Configure to allow file uploads
 - [ ] Configure to send DM's as a real bot using Token, instead of showing up via default webhook "Slackbot" DM
 
