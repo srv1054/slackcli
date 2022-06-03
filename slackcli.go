@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -16,6 +17,9 @@ import (
 
    Compiles to single binary that can be used to dump info to slack quickly and easily via webhooks
 */
+
+// ************ FINISH FILE UPLOLAD MULTIPART DATA SECTION
+// FIGURE OUT HOW TO PASS emoji/name/channel to PostSNippet ( NOT SUPPORTED by Slack that I can see in API Docs )
 
 func main() {
 
@@ -32,7 +36,7 @@ func main() {
 	var totalBuf string
 	var nBytes = int64(0)
 
-	opts.Version = "1.06.08"
+	opts.Version = "1.07.02"
 
 	version := flag.Bool("v", false, "Show current version number")
 	cfg := flag.String("cfg", "", "Path to optional configuration file (default /etc/slackcli.json)")
@@ -42,7 +46,9 @@ func main() {
 	postname := flag.String("n", "", "Name of bot to post to channel as")
 	postemoji := flag.String("e", "", "Emoji to use for bot post (no colons)")
 	postmessage := flag.String("m", "", "Message to send to slack channel")
-	snippet := flag.Bool("s", false, "Expect Pipe to Standard In to send to slack as a Snippet attachment")
+	snippet := flag.Bool("s", false, "Expect Pipe to Standard In to send to slack as a Snippet attachment.  Note slack does not support Emoji or bot name changes on API Snippet posts or file uploads.  -e and -n do not have any effect")
+	snipmsg := flag.String("msg", "", "Pre-Snippet Message, posted with any snippt. Requires -s")
+	fileis := flag.String("file", "", "Path and name of file to send as a snippet, can not be binary")
 
 	flag.Parse()
 
@@ -56,6 +62,11 @@ func main() {
 		myConfig = *cfg
 	} else {
 		myConfig = "default"
+	}
+
+	if !*snippet && *snipmsg != "" {
+		fmt.Println("-msg requires -s.  See -h for more info")
+		os.Exit(0)
 	}
 
 	opts, fail = slackmod.LoadConfig(myConfig)
@@ -140,11 +151,33 @@ func main() {
 		}
 
 		// post the snippet
-		err := slackmod.PostSnippet(myToken, "Plain Text", totalBuf, myChannel, "STD IN")
+		err := slackmod.PostSnippet(myToken, "Plain Text", totalBuf, myChannel, "", *snipmsg)
 		if err != nil {
 			fmt.Println("Something failed in PostSnippet function -> " + err.Error())
 			os.Exit(1)
 		}
+
+		os.Exit(0)
+
+	}
+	if *fileis != "" {
+		// UPLOAD whatever file was sent
+
+		// validate path and file exist
+		if _, err := os.Stat(*fileis); errors.Is(err, os.ErrNotExist) {
+			fmt.Println("Could not find specified file included in the -file parameter of " + *fileis)
+
+			os.Exit(1)
+		}
+		// verify file type
+
+		// call snippet func
+		err := slackmod.PostFile(myToken, myChannel, *fileis)
+		if err != nil {
+			fmt.Println("Something failed in PostSnippet function -> " + err.Error())
+			os.Exit(1)
+		}
+
 		os.Exit(0)
 	}
 
@@ -156,7 +189,5 @@ func main() {
 	}
 
 	slackmod.Wrangler(opts.SlackHook, myMessage, myChannel, myEmoji, myName, attachments)
-
-	// start features for BOT DMs and Snippets here
 
 }
