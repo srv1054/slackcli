@@ -407,6 +407,9 @@ func findConversationID(token string, channelName string) (string, error) {
 			return "", err
 		}
 		if !payload.Ok {
+			if payload.Error == "missing_scope" {
+				return "", fmt.Errorf("missing_scope while resolving #%s via conversations.list: add Slack scopes `channels:read`, `groups:read`, `im:read`, `mpim:read` (then reinstall app) or pass a channel ID like C123456 instead of #%s", channelName, channelName)
+			}
 			return "", fmt.Errorf("conversations.list failed while resolving #%s: %s", channelName, payload.Error)
 		}
 
