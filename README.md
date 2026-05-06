@@ -51,6 +51,7 @@ An example of the config file and its options are available in the source reposi
 
 ## Snippets
 To send a snippet message into slack, you will need a BOT app token (not a web hook) either in your -cfg or on the CLI directly.
+The token needs Slack's `files:write` scope. If you use channel names like `#general` for snippets or file uploads, the token also needs permission to list conversations so `slackcli` can resolve the channel name to Slack's required channel ID. You can also pass a channel ID such as `C123456` directly.
 
 The `-s` parameter will tell slackcli you want to create a snippet and are feeding it in via STDIN (pipe).  You can pipe any text information into slackcli to create the snippet.  You may also specify `-msg` which will place a markdown capable message prior to your snippet (in slack its referred to as the comment) and you may also specify `-title` which will give the snippet a title inside the post.  If omitted slack will labled it `untitled`
 

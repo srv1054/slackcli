@@ -1,6 +1,6 @@
 module github.com/srv1054/slackcli
 
-go 1.17
+go 1.23.0
 
 require github.com/parnurzeal/gorequest v0.2.16
 

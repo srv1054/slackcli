@@ -33,7 +33,7 @@ func main() {
 	var totalBuf string
 	var nBytes = int64(0)
 
-	opts.Version = "1.08.00"
+	opts.Version = "1.09.00"
 
 	version := flag.Bool("v", false, "Show current version number")
 	cfg := flag.String("cfg", "", "Path to optional configuration file (default /etc/slackcli.json)")

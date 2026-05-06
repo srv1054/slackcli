@@ -7,20 +7,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/parnurzeal/gorequest"
 )
 
 const (
-	fileUploadURL       string = "https://slack.com/api/files.upload"
+	fileGetUploadURL    string = "https://slack.com/api/files.getUploadURLExternal"
+	fileCompleteURL     string = "https://slack.com/api/files.completeUploadExternal"
 	channelCreateURL    string = "https://slack.com/api/channels.create"
 	channelArchiveURL   string = "https://slack.com/api/channels.archive"
 	channelListURL      string = "https://slack.com/api/conversations.list"
@@ -53,6 +53,38 @@ type Field struct {
 type BasicSlackPayload struct {
 	Ok    bool   `json:"ok"`
 	Error string `json:"error"`
+}
+
+type fileUploadURLPayload struct {
+	Ok        bool   `json:"ok"`
+	Error     string `json:"error"`
+	UploadURL string `json:"upload_url"`
+	FileID    string `json:"file_id"`
+}
+
+type fileCompletePayload struct {
+	Files          []fileCompleteItem `json:"files"`
+	Channels       string             `json:"channels,omitempty"`
+	InitialComment string             `json:"initial_comment,omitempty"`
+}
+
+type fileCompleteItem struct {
+	ID    string `json:"id"`
+	Title string `json:"title,omitempty"`
+}
+
+type conversationListPayload struct {
+	Ok               bool `json:"ok"`
+	Error            string
+	Channels         []conversationItem `json:"channels"`
+	ResponseMetadata struct {
+		NextCursor string `json:"next_cursor"`
+	} `json:"response_metadata"`
+}
+
+type conversationItem struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // BotDMPayload - struct for bot DMs
@@ -119,70 +151,39 @@ func redirectPolicyFunc(req gorequest.Request, via []gorequest.Request) error {
 
 // PostSnippet - Post a snippet of any type to slack channel
 func PostSnippet(token string, fileType string, fileContent string, channel string, title string, comment string) error {
-
-	form := url.Values{}
-
-	form.Set("channels", channel)
-	form.Set("content", fileContent)
-	form.Set("filetype", fileType)
-	form.Set("title", title)
-	form.Set("initial_comment", comment)
-
-	s := form.Encode()
-
-	req, err := http.NewRequest("POST", fileUploadURL, strings.NewReader(s))
-	if err != nil {
-		return err
+	if title == "" {
+		title = "snippet.txt"
 	}
 
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+token)
-
-	c := &http.Client{}
-	resp, err := c.Do(req)
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	_, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return uploadExternalFile(token, []byte(fileContent), title, title, fileType, channel, comment)
 }
 
 // PostFile - Post a file of any type to slack channel
 func PostFile(token string, channel string, fileName string) error {
-
-	extraParams := map[string]string{
-		"channels": channel,
-		"filename": fileName,
-		"filetype": "binary",
-	}
-
-	req, err := newfileUploadRequest(fileUploadURL, extraParams, "file", fileName)
-	req.Header.Add("Authorization", "Bearer "+token)
-
-	c := &http.Client{}
-	resp, err := c.Do(req)
-	if err != nil {
-		return err
-	}
-	fmt.Println(resp.Status)
-
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
+	fileContent, err := os.ReadFile(fileName)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(string(body))
+	title := filepath.Base(fileName)
+	return uploadExternalFile(token, fileContent, title, title, "", channel, "")
+}
 
-	return nil
+func uploadExternalFile(token string, fileContent []byte, filename string, title string, snippetType string, channel string, comment string) error {
+	if snippetType == "Plain Text" {
+		snippetType = ""
+	}
+
+	uploadURL, fileID, err := getUploadURLExternal(token, filename, int64(len(fileContent)), snippetType)
+	if err != nil {
+		return err
+	}
+
+	if err := uploadFileContent(uploadURL, fileContent); err != nil {
+		return err
+	}
+
+	return completeUploadExternal(token, fileID, title, channel, comment)
 }
 
 // Send - send message
@@ -250,6 +251,195 @@ func Wrangler(webhookURL string, message string, myChannel string, emojiName str
 	}
 }
 
+func getUploadURLExternal(token string, filename string, length int64, snippetType string) (string, string, error) {
+	form := url.Values{}
+	form.Set("filename", filename)
+	form.Set("length", strconv.FormatInt(length, 10))
+	if snippetType != "" {
+		form.Set("snippet_type", snippetType)
+	}
+
+	req, err := http.NewRequest("POST", fileGetUploadURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", "", err
+	}
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+
+	var payload fileUploadURLPayload
+	if err := decodeSlackResponse(resp, &payload); err != nil {
+		return "", "", err
+	}
+	if !payload.Ok {
+		return "", "", fmt.Errorf("files.getUploadURLExternal failed: %s", payload.Error)
+	}
+	if payload.UploadURL == "" || payload.FileID == "" {
+		return "", "", fmt.Errorf("files.getUploadURLExternal response was missing upload_url or file_id")
+	}
+
+	return payload.UploadURL, payload.FileID, nil
+}
+
+func uploadFileContent(uploadURL string, fileContent []byte) error {
+	req, err := http.NewRequest("POST", uploadURL, bytes.NewReader(fileContent))
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Content-Type", "application/octet-stream")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("upload to Slack file URL failed: %s: %s", resp.Status, strings.TrimSpace(string(body)))
+	}
+
+	return nil
+}
+
+func completeUploadExternal(token string, fileID string, title string, channel string, comment string) error {
+	channel, err := resolveUploadChannels(token, channel)
+	if err != nil {
+		return err
+	}
+
+	payload := fileCompletePayload{
+		Files: []fileCompleteItem{
+			{
+				ID:    fileID,
+				Title: title,
+			},
+		},
+		Channels:       channel,
+		InitialComment: comment,
+	}
+
+	jsonStr, err := json.Marshal(&payload)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", fileCompleteURL, bytes.NewBuffer(jsonStr))
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var slackResp BasicSlackPayload
+	if err := decodeSlackResponse(resp, &slackResp); err != nil {
+		return err
+	}
+	if !slackResp.Ok {
+		return fmt.Errorf("files.completeUploadExternal failed: %s", slackResp.Error)
+	}
+
+	return nil
+}
+
+func resolveUploadChannels(token string, channels string) (string, error) {
+	if channels == "" {
+		return "", nil
+	}
+
+	channelList := strings.Split(channels, ",")
+	for i, channel := range channelList {
+		channel = strings.TrimSpace(channel)
+		if strings.HasPrefix(channel, "#") {
+			channelID, err := findConversationID(token, strings.TrimPrefix(channel, "#"))
+			if err != nil {
+				return "", err
+			}
+			channel = channelID
+		}
+		channelList[i] = channel
+	}
+
+	return strings.Join(channelList, ","), nil
+}
+
+func findConversationID(token string, channelName string) (string, error) {
+	cursor := ""
+	for {
+		form := url.Values{}
+		form.Set("exclude_archived", "true")
+		form.Set("limit", "1000")
+		form.Set("types", "public_channel,private_channel")
+		if cursor != "" {
+			form.Set("cursor", cursor)
+		}
+
+		req, err := http.NewRequest("POST", channelListURL, strings.NewReader(form.Encode()))
+		if err != nil {
+			return "", err
+		}
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Add("Authorization", "Bearer "+token)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return "", err
+		}
+
+		var payload conversationListPayload
+		err = decodeSlackResponse(resp, &payload)
+		resp.Body.Close()
+		if err != nil {
+			return "", err
+		}
+		if !payload.Ok {
+			return "", fmt.Errorf("conversations.list failed while resolving #%s: %s", channelName, payload.Error)
+		}
+
+		for _, channel := range payload.Channels {
+			if channel.Name == channelName {
+				return channel.ID, nil
+			}
+		}
+
+		cursor = payload.ResponseMetadata.NextCursor
+		if cursor == "" {
+			break
+		}
+	}
+
+	return "", fmt.Errorf("could not find Slack channel #%s; pass a channel ID like C123456 instead", channelName)
+}
+
+func decodeSlackResponse(resp *http.Response, payload interface{}) error {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("Slack API request failed: %s: %s", resp.Status, strings.TrimSpace(string(body)))
+	}
+	if err := json.Unmarshal(body, payload); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // LoadConfig - Load Main Configuration JSON
 func LoadConfig(path string) (opts Slackopts, fail string) {
 	var fileName string
@@ -292,34 +482,4 @@ func LoadConfig(path string) (opts Slackopts, fail string) {
 	}
 
 	return opts, "loaded"
-}
-
-// Creates a new file upload http request with optional extra params
-func newfileUploadRequest(uri string, params map[string]string, paramName, path string) (*http.Request, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile(paramName, filepath.Base(path))
-	if err != nil {
-		return nil, err
-	}
-	_, err = io.Copy(part, file)
-
-	for key, val := range params {
-		_ = writer.WriteField(key, val)
-	}
-	err = writer.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", uri, body)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	return req, err
 }
