@@ -78,7 +78,7 @@ func main() {
 			os.Exit(1)
 		}
 		opts.SlackHook = *hooker
-		opts.SlackHook = *token
+		opts.SlackToken = *token
 	}
 
 	// grab cfg file defaults if CLI is blank
